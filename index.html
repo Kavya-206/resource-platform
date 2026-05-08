@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Study Resource Sharing Platform</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+    font-family: Arial;
+    background: #f4f4f4;
+    margin: 0;
+}
+
+.container {
+    max-width: 700px;
+    margin: 20px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+h2 { text-align: center; }
+
+input, textarea, select, button {
+    width: 100%;
+    margin: 5px 0;
+    padding: 10px;
+}
+
+button {
+    background: #28a745;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.resource {
+    background: #eee;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 5px;
+}
+
+a {
+    color: blue;
+    word-break: break-all;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div class="container" id="loginDiv">
+    <h2>Login / Signup</h2>
+    <input type="text" id="username" placeholder="Enter username">
+    <button onclick="login()">Enter Platform</button>
+</div>
+
+<!-- APP -->
+<div class="container" id="appDiv" style="display:none;">
+    <h2>Study Resource Platform</h2>
+
+    <h3>Upload Resource</h3>
+    <input type="text" id="title" placeholder="Title">
+    <input type="text" id="subject" placeholder="Subject">
+    <textarea id="desc" placeholder="Description"></textarea>
+
+    <input type="file" id="file">
+    <input type="text" id="link" placeholder="OR paste resource link">
+
+    <button onclick="addResource()">Upload</button>
+
+    <input type="text" id="search" placeholder="Search by subject or keyword..." onkeyup="searchResource()">
+
+    <h3>Available Resources</h3>
+    <div id="resourceList"></div>
+
+    <h3>Admin Panel</h3>
+    <button onclick="clearAll()">Remove All Resources</button>
+
+    <button onclick="logout()">Logout</button>
+</div>
+
+<script>
+let resources = JSON.parse(localStorage.getItem("resources")) || [];
+
+function login() {
+    let user = document.getElementById("username").value;
+
+    if(user === "") {
+        alert("Enter username");
+        return;
+    }
+
+    localStorage.setItem("user", user);
+    document.getElementById("loginDiv").style.display = "none";
+    document.getElementById("appDiv").style.display = "block";
+    loadResources();
+}
+
+function logout() {
+    localStorage.removeItem("user");
+    location.reload();
+}
+
+function addResource() {
+    let file = document.getElementById("file").files[0];
+    let reader = new FileReader();
+
+    let title = document.getElementById("title").value;
+    let subject = document.getElementById("subject").value;
+    let desc = document.getElementById("desc").value;
+    let link = document.getElementById("link").value;
+
+    if(title === "" || subject === "") {
+        alert("Fill required fields");
+        return;
+    }
+
+    if(file) {
+        reader.onload = function() {
+            saveResource(reader.result);
+        };
+        reader.readAsDataURL(file);
+    } else if(link !== "") {
+        saveResource(link);
+    } else {
+        alert("Upload file or add link");
+    }
+
+    function saveResource(fileData) {
+        resources.push({
+            id: Date.now(),
+            title,
+            subject,
+            desc,
+            file: fileData,
+            user: localStorage.getItem("user")
+        });
+
+        localStorage.setItem("resources", JSON.stringify(resources));
+        loadResources();
+
+        document.getElementById("title").value = "";
+        document.getElementById("subject").value = "";
+        document.getElementById("desc").value = "";
+        document.getElementById("file").value = "";
+        document.getElementById("link").value = "";
+    }
+}
+
+function loadResources(filtered = resources) {
+    let list = document.getElementById("resourceList");
+    list.innerHTML = "";
+
+    filtered.forEach(r => {
+        let div = document.createElement("div");
+        div.className = "resource";
+
+        let linkHTML = r.file.startsWith("data:")
+            ? `<a href="${r.file}" download>Download File</a>`
+            : `<a href="${r.file}" target="_blank">Open Link</a>`;
+
+        div.innerHTML = `
+            <strong>${r.title}</strong> (${r.subject})<br>
+            <small>${r.desc}</small><br>
+            ${linkHTML}<br>
+            <button onclick="deleteResource(${r.id})">Delete</button>
+        `;
+
+        list.appendChild(div);
+    });
+}
+
+function deleteResource(id) {
+    resources = resources.filter(r => r.id !== id);
+    localStorage.setItem("resources", JSON.stringify(resources));
+    loadResources();
+}
+
+function searchResource() {
+    let key = document.getElementById("search").value.toLowerCase();
+
+    let filtered = resources.filter(r =>
+        r.title.toLowerCase().includes(key) ||
+        r.subject.toLowerCase().includes(key)
+    );
+
+    loadResources(filtered);
+}
+
+function clearAll() {
+    if(confirm("Admin: Delete all resources?")) {
+        localStorage.removeItem("resources");
+        resources = [];
+        loadResources();
+    }
+}
+
+window.onload = function() {
+    if(localStorage.getItem("user")) {
+        document.getElementById("loginDiv").style.display = "none";
+        document.getElementById("appDiv").style.display = "block";
+        loadResources();
+    }
+};
+</script>
+
+</body>
+</html>
